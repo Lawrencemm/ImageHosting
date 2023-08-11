@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:14-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=hello_django
+      - POSTGRES_USER=hello_django
+      - POSTGRES_PASSWORD=hello_django
+
+  redis:
+    image: redis:7-alpine
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: api_service
+    command: ./manage.py runserver
+    volumes:
+      - ./services:/app
+      - ./media_volume:/app/media_volume
+    ports:
+      - 8010:8000
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - db
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: celery_service
+    command: celery -A services worker -l INFO
+    volumes:
+      - ./services:/app
+      - ./media_volume:/app/media_volume
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - db
+
+volumes:
+  postgres_data:
